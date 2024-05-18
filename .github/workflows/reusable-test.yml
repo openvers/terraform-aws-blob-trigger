@@ -1,0 +1,143 @@
+name: '[Reusable] Blob Trigger Pytest'
+
+on:
+  workflow_call:
+    inputs:
+      ACT_MODE:
+        description: |
+          For running Github Action Workflows locally with Nektos act
+        required: true
+        type: boolean
+      markers:
+        description: |
+          PyTest Markers to select specific tests to work within Github Action Workflows
+        required: true
+        type: string
+      token_lifetime:
+        description: |
+          AWS STS Token Lifetime in seconds
+        required: false
+        type: number
+        default: 1200
+      token_retries:
+        description: |
+          AWS STS Token request retry attempts
+        required: false
+        type: number
+        default: 3
+    
+    secrets:
+      AWS_CLIENT_ID:
+        description: |
+          AWS Service Account Client ID for authentication
+        required: true
+      AWS_CLIENT_SECRET:
+        description: |
+          AWS Service Account Client Secret for Authentication (when running locally)
+        required: true
+      AWS_REGION:
+        description: |
+          AWS Account Region
+        required: false
+      AWS_ROLE_TO_ASSUME:
+        description: |
+          AWS role to assume when asking for Security Token Service (STS) to provide a set of temporary credentials
+        required: false
+      TF_API_TOKEN:
+        description: |
+          Terraform.io Access Token
+        required: true
+
+#Special permissions required for OIDC authentication
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform-output:
+    name: Terraform Output
+    runs-on: ubuntu-latest
+    
+    defaults:
+        run:
+          working-directory: "./test"
+    
+    outputs:
+      INPUT_BUCKET: "${{ steps.tf-raw.outputs.INPUT_BUCKET }}"
+      OUTPUT_BUCKET: "${{ steps.tf-raw.outputs.OUTPUT_BUCKET }}"
+      CLIENT_ID: "${{ steps.tf-raw.outputs.CLIENT_ID}}"
+      ASSUME_ROLE: "${{ steps.tf-raw.outputs.ASSUME_ROLE}}"
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    # Install the latest version of the Terraform CLI
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+        terraform_wrapper: false
+    
+    - name: terraform init
+      run: terraform init
+
+    - name: terraform raw output
+      id: tf-raw
+      run: |
+        echo "INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
+        OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
+        CLIENT_ID=$(terraform output -raw service_account_client_id)
+        ASSUME_ROLE=$(terraform output -raw assume_role)" >> $GITHUB_OUTPUT
+  
+  terraform-test:
+    name: Terraform Test
+    needs: [ terraform-output ]
+    runs-on: ubuntu-latest
+    env:
+        INPUT_BUCKET: ${{ needs.terraform-output.outputs.INPUT_BUCKET }}
+        OUTPUT_BUCKET: ${{ needs.terraform-output.outputs.OUTPUT_BUCKET }}
+    
+    defaults:
+      run:
+        working-directory: "./test/unit_test"
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ needs.terraform-output.outputs.CLIENT_ID }}
+          aws-secret-access-key: ${{ !!inputs.ACT_MODE && secrets.AWS_CLIENT_SECRET || null }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ needs.terraform-output.outputs.ASSUME_ROLE }}
+          role-duration-seconds: ${{ inputs.token_lifetime }}
+          role-skip-session-tagging: true
+          mask-aws-account-id: true
+          retry-max-attempts: ${{ inputs.token_retries }}
+        
+      - name: Setup Python # Set Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+                  
+      # Install pip and pytest
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest s3fs fsspec uuid
+      
+      - name: Test with pytest
+        run: |
+          pytest -m "${{ inputs.markers }}" \
+            --doctest-modules \
+            --junitxml=junit/test-results.xml
+              
+      - name: Upload pytest test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: pytest-results
+          path: junit/test-results.xml

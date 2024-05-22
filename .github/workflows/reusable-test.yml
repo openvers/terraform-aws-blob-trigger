@@ -89,6 +89,7 @@ jobs:
       run: |
         echo "::add-mask::$(terraform output -raw service_account_client_id)"
         echo "::add-mask::$(terraform output -raw service_account_client_secret)"
+        echo "::add-mask::$(terraform output -raw assume_role_arn)"
         echo "INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
         OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
         ASSUME_ROLE=$(terraform output -raw assume_role_arn)
@@ -102,7 +103,6 @@ jobs:
     env:
         INPUT_BUCKET: ${{ needs.terraform-output.outputs.INPUT_BUCKET }}
         OUTPUT_BUCKET: ${{ needs.terraform-output.outputs.OUTPUT_BUCKET }}
-        AWS_ASSUME_ROLE: ${{ needs.terraform-output.outputs.ASSUME_ROLE }}
     
     defaults:
       run:
@@ -117,7 +117,7 @@ jobs:
           aws-access-key-id: ${{ !!inputs.ACT_MODE && needs.terraform-output.outputs.CLIENT_ID || null }}
           aws-secret-access-key: ${{ !!inputs.ACT_MODE && needs.terraform-output.outputs.CLIENT_SECRET || null }}
           aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ASSUME_ROLE }}
+          role-to-assume: ${{ needs.terraform-output.outputs.ASSUME_ROLE }}
           role-duration-seconds: ${{ inputs.token_lifetime }}
           role-skip-session-tagging: true
           mask-aws-account-id: true

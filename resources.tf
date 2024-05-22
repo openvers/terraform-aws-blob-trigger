@@ -208,12 +208,12 @@ data "aws_iam_policy_document" "logs" {
   provider = aws.auth_session
 
   statement {
-    sid     = "PolicyDoc${replace("${var.function_name}Buckets${local.suffix}", "-", "")}"
-    effect  = "Allow"
+    sid    = "PolicyDoc${replace("${var.function_name}Buckets${local.suffix}", "-", "")}"
+    effect = "Allow"
     actions = [
-    "s3:GetObject",
-    "s3:PutObject"
-  ]
+      "s3:GetObject",
+      "s3:PutObject"
+    ]
 
     resources = [
       "arn:aws:s3:::${var.trigger_bucket_name}",
@@ -224,13 +224,13 @@ data "aws_iam_policy_document" "logs" {
   }
 
   statement {
-    sid     = "PolicyDoc${replace("${var.function_name}Logs${local.suffix}", "-", "")}"
-    effect  = "Allow"
+    sid    = "PolicyDoc${replace("${var.function_name}Logs${local.suffix}", "-", "")}"
+    effect = "Allow"
     actions = [
-    "logs:CreateLogGroup",
-    "logs:CreateLogStream",
-    "logs:PutLogEvents",
-  ]
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents",
+    ]
 
     resources = [
       aws_cloudwatch_log_group.this.arn,

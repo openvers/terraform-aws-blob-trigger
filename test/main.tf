@@ -87,6 +87,12 @@ locals {
     "iam:DeletePolicy",
     "iam:CreatePolicyVersion",
     "iam:DeletePolicyVersion",
+    "iam:ListAttachedGroupPolicies",
+    "iam:AttachGroupPolicy",
+    "iam:GetGroupPolicy",
+    "iam:PutGroupPolicy",
+    "iam:DeleteGroupPolicy",
+    "iam:DetachGroupPolicy",
     "kms:ScheduleKeyDeletion",
     "kms:GenerateDataKey*",
     "kms:Encrypt",
@@ -130,12 +136,11 @@ provider "aws" {
 ## - `aws.accountgen`: Alias for the AWS provider for generating service accounts.
 ##---------------------------------------------------------------------------------------------------------------------
 module "aws_service_account" {
-  source = "github.com/sim-parables/terraform-aws-service-account.git?ref=4dc42fee8feeb33d082d6c7b1546e343dba186d8"
+  source = "github.com/sim-parables/terraform-aws-service-account.git?ref=a18e50b961655a345a7fd2d8e573fe84484c7235"
 
   service_account_name = var.service_account_name
   service_account_path = var.service_account_path
   roles_list           = local.service_account_roles_list
-
 
   providers = {
     aws.accountgen = aws.accountgen
@@ -166,10 +171,11 @@ provider "aws" {
 ## - `aws.accountgen`: Alias for the AWS provider for generating service accounts.
 ##---------------------------------------------------------------------------------------------------------------------
 module "aws_identity_federation_roles" {
-  source     = "github.com/sim-parables/terraform-aws-service-account.git?ref=4dc42fee8feeb33d082d6c7b1546e343dba186d8//modules/identity_federation_roles"
+  source     = "github.com/sim-parables/terraform-aws-service-account.git?ref=a18e50b961655a345a7fd2d8e573fe84484c7235//modules/identity_federation_roles"
   depends_on = [module.aws_service_account]
 
-  assume_role_policies = local.assume_role_policies
+  assume_role_policies  = local.assume_role_policies
+  service_account_group = module.aws_service_account.group_name
   policy_roles_list = [
     "iam:DeleteRole",
     "iam:ListInstanceProfilesForRole",

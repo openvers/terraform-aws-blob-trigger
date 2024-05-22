@@ -32,7 +32,6 @@ locals {
           test     = "StringLike"
           variable = "token.actions.githubusercontent.com:sub"
           values = [
-            "repo:${var.GITHUB_REPOSITORY}:environment:${var.GITHUB_ENV}",
             "repo:${var.GITHUB_REPOSITORY}:ref:${var.GITHUB_REF}"
           ]
         },

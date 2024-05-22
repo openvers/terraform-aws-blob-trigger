@@ -89,12 +89,12 @@ jobs:
       run: |
         echo "::add-mask::$(terraform output -raw service_account_client_id)"
         echo "::add-mask::$(terraform output -raw service_account_client_secret)"
-        echo "::add-mask::$(terraform output -raw assume_role)"
+        echo "::add-mask::$(terraform output -raw assume_role_arn)"
         echo "INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
         OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
         CLIENT_ID=$(terraform output -raw service_account_client_id)
         CLIENT_SECRET=${{ !!inputs.ACT_MODE && '$(terraform output -raw service_account_client_secret)' || 'null'}}
-        ASSUME_ROLE=$(terraform output -raw assume_role)" >> $GITHUB_OUTPUT
+        ASSUME_ROLE=$(terraform output -raw assume_role_arn)" >> $GITHUB_OUTPUT
   
   terraform-test:
     name: Terraform Test
@@ -114,7 +114,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ needs.terraform-output.outputs.CLIENT_ID }}
+          aws-access-key-id: ${{ !!inputs.ACT_MODE && needs.terraform-output.outputs.CLIENT_ID || null }}
           aws-secret-access-key: ${{ !!inputs.ACT_MODE && needs.terraform-output.outputs.CLIENT_SECRET || null }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-to-assume: ${{ needs.terraform-output.outputs.ASSUME_ROLE }}

@@ -92,7 +92,7 @@ jobs:
         echo "::add-mask::$(terraform output -raw assume_role_arn)"
         echo "INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
         OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
-        CLIENT_ID=$(terraform output -raw service_account_client_id)
+        CLIENT_ID=${{ !!inputs.ACT_MODE && '$(terraform output -raw service_account_client_id)' || 'null' }}
         CLIENT_SECRET=${{ !!inputs.ACT_MODE && '$(terraform output -raw service_account_client_secret)' || 'null'}}
         ASSUME_ROLE=$(terraform output -raw assume_role_arn)" >> $GITHUB_OUTPUT
   

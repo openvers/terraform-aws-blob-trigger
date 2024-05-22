@@ -89,7 +89,6 @@ jobs:
       run: |
         echo "::add-mask::$(terraform output -raw service_account_client_id)"
         echo "::add-mask::$(terraform output -raw service_account_client_secret)"
-        echo "::add-mask::$(terraform output -raw assume_role_arn)"
         echo "INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
         OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
         ASSUME_ROLE=$(terraform output -raw assume_role_arn)

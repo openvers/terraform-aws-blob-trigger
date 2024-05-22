@@ -23,11 +23,9 @@ output "service_account_client_secret" {
 output "assume_role" {
   description = "AWS IAM Assume Role with Web Identitiy Provider Name"
   value       = module.aws_identity_federation_roles.assume_role
-  sensitive   = true
 }
 
 output "assume_role_arn" {
   description = "AWS IAM Assume Role with Web Identitiy Provider Name"
   value       = module.aws_identity_federation_roles.assume_role_arn
-  sensitive   = true
 }

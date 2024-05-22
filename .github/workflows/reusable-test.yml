@@ -103,6 +103,7 @@ jobs:
     env:
         INPUT_BUCKET: ${{ needs.terraform-output.outputs.INPUT_BUCKET }}
         OUTPUT_BUCKET: ${{ needs.terraform-output.outputs.OUTPUT_BUCKET }}
+        AWS_ASSUME_ROLE: ${{ needs.terraform-output.outputs.ASSUME_ROLE }}
     
     defaults:
       run:
@@ -117,7 +118,7 @@ jobs:
           aws-access-key-id: ${{ !!inputs.ACT_MODE && needs.terraform-output.outputs.CLIENT_ID || null }}
           aws-secret-access-key: ${{ !!inputs.ACT_MODE && needs.terraform-output.outputs.CLIENT_SECRET || null }}
           aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ needs.terraform-output.outputs.ASSUME_ROLE }}
+          role-to-assume: ${{ env.AWS_ASSUME_ROLE }}
           role-duration-seconds: ${{ inputs.token_lifetime }}
           role-skip-session-tagging: true
           mask-aws-account-id: true

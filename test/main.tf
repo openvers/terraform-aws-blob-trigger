@@ -32,7 +32,7 @@ locals {
           test     = "StringLike"
           variable = "token.actions.githubusercontent.com:sub"
           values = [
-            "repo:${var.GITHUB_REPOSITORY}:ref:${var.GITHUB_REF}"
+            "repo:${var.GITHUB_REPOSITORY}:ref:${replace(var.GITHUB_REF, "head\\/", "heads/")}"
           ]
         },
         {

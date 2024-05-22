@@ -130,7 +130,7 @@ provider "aws" {
 ## - `aws.accountgen`: Alias for the AWS provider for generating service accounts.
 ##---------------------------------------------------------------------------------------------------------------------
 module "aws_service_account" {
-  source = "github.com/sim-parables/terraform-aws-service-account.git?ref=60c42bd5f42b224b5f0efaea197d950e08f00756"
+  source = "github.com/sim-parables/terraform-aws-service-account.git?ref=4dc42fee8feeb33d082d6c7b1546e343dba186d8"
 
   service_account_name = var.service_account_name
   service_account_path = var.service_account_path
@@ -166,7 +166,7 @@ provider "aws" {
 ## - `aws.accountgen`: Alias for the AWS provider for generating service accounts.
 ##---------------------------------------------------------------------------------------------------------------------
 module "aws_identity_federation_roles" {
-  source     = "github.com/sim-parables/terraform-aws-service-account.git?ref=60c42bd5f42b224b5f0efaea197d950e08f00756//modules/identity_federation_roles"
+  source     = "github.com/sim-parables/terraform-aws-service-account.git?ref=4dc42fee8feeb33d082d6c7b1546e343dba186d8//modules/identity_federation_roles"
   depends_on = [module.aws_service_account]
 
   assume_role_policies = local.assume_role_policies

@@ -76,7 +76,7 @@ jobs:
       ACT_MODE: ${{ !!github.event.act }}
   
   terraform-integration-test:
-    if: ${{ github.event.act || github.event.inputs.terraform_operation == 'test' }}
+    if: github.event.act || github.ref == 'refs/heads/main'
     needs: [ terraform-integration-apply ]
     uses: ./.github/workflows/reusable-test.yml
     secrets:

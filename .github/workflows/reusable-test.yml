@@ -66,6 +66,7 @@ jobs:
       INPUT_BUCKET: "${{ steps.tf-raw.outputs.INPUT_BUCKET }}"
       OUTPUT_BUCKET: "${{ steps.tf-raw.outputs.OUTPUT_BUCKET }}"
       CLIENT_ID: "${{ steps.tf-raw.outputs.CLIENT_ID}}"
+      CLIENT_SECRET: "${{ steps.tf-raw.outputs.CLIENT_SECRET}}"
       ASSUME_ROLE: "${{ steps.tf-raw.outputs.ASSUME_ROLE}}"
 
     steps:
@@ -86,9 +87,13 @@ jobs:
     - name: terraform raw output
       id: tf-raw
       run: |
+        echo "::add-mask::$(terraform output -raw service_account_client_id)"
+        echo "::add-mask::$(terraform output -raw service_account_client_secret)"
+        echo "::add-mask::$(terraform output -raw assume_role)"
         echo "INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
         OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
         CLIENT_ID=$(terraform output -raw service_account_client_id)
+        CLIENT_SECRET=${{ !!inputs.ACT_MODE && '$(terraform output -raw service_account_client_secret)' || 'null'}}
         ASSUME_ROLE=$(terraform output -raw assume_role)" >> $GITHUB_OUTPUT
   
   terraform-test:
@@ -110,7 +115,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ needs.terraform-output.outputs.CLIENT_ID }}
-          aws-secret-access-key: ${{ !!inputs.ACT_MODE && secrets.AWS_CLIENT_SECRET || null }}
+          aws-secret-access-key: ${{ !!inputs.ACT_MODE && needs.terraform-output.outputs.CLIENT_SECRET || null }}
           aws-region: ${{ secrets.AWS_REGION }}
           role-to-assume: ${{ needs.terraform-output.outputs.ASSUME_ROLE }}
           role-duration-seconds: ${{ inputs.token_lifetime }}

@@ -26,14 +26,27 @@ variable "trigger_bucket_name" {
   description = "Target S3 Bucket Name"
 }
 
-variable "trigger_bucket_arn" {
+variable "results_bucket_name" {
   type        = string
-  description = "Target S3 Bucket Arn"
+  description = "Results S3 Bucket Name"
 }
 
-variable "results_bucket_arn" {
+variable "kms_key_id" {
   type        = string
-  description = "Results S3 Bucket ARN"
+  description = "KMS Encryption Key ID"
+}
+
+variable "kms_key_arn" {
+  type        = string
+  description = "KMS Encryption Key ARN"
+}
+
+variable "sns_topic_arn" {
+  type        = string
+  description = <<EOT
+    Lambda Function Dead Letter Queue for failed messages.
+    Must be either an SNS Topic ARN or SQS Queue
+    EOT
 }
 
 ## ---------------------------------------------------------------------------------------------------------------------
@@ -66,7 +79,7 @@ variable "function_memory" {
 }
 
 variable "function_dependencies" {
-  type        = list(object({
+  type = list(object({
     package_name    = string
     package_version = string
     no_dependencies = bool
@@ -85,6 +98,12 @@ variable "function_environment_variables" {
   type        = map(any)
   description = "Mapping AWS Lamdba Function Env Variables"
   default     = {}
+}
+
+variable "function_concurrency" {
+  type        = number
+  description = "Lambda Function Execution Concurrency Limit"
+  default     = 5
 }
 
 variable "cloudwatch_logs_retention_days" {

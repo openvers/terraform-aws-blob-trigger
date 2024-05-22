@@ -3,14 +3,14 @@
 ## These variables are expected to be passed in by the operator
 ## ---------------------------------------------------------------------------------------------------------------------
 
-variable "bucket_name" {
+variable "service_account_arn" {
   type        = string
-  description = "AWS Storage Bucket Name"
+  description = "AWS IAM Service Account ARN"
 }
 
-variable "kms_key_arn" {
+variable "assume_role_arn" {
   type        = string
-  description = "KMS Encryption Key ARN"
+  description = "AWS Web Identity Provider Assume Role ARN"
 }
 
 ## ---------------------------------------------------------------------------------------------------------------------
@@ -18,14 +18,20 @@ variable "kms_key_arn" {
 ## These variables have defaults and may be overridden
 ## ---------------------------------------------------------------------------------------------------------------------
 
+variable "kms_key_description" {
+  type        = string
+  description = "S3 KMS Encryption Key Description"
+  default     = "Sim Parables Dataflow Example S3|KMS Encryption Key"
+}
+
 variable "kms_retention_days" {
   type        = number
   description = "KMS Encryption Key Retention Window in Days"
-  default     = 1
+  default     = 7
 }
 
-variable "kms_encryption_algorithm" {
-  type        = string
-  description = "S3 KMS Encryption Key Algorithm"
-  default     = "aws:kms"
+variable "resource_list" {
+  type        = list(any)
+  description = "List of AWS Resources to bind acces to the IAM Policy Document"
+  default     = ["*"]
 }

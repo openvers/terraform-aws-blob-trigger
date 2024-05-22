@@ -3,14 +3,14 @@
 ## These variables are expected to be passed in by the operator
 ## ---------------------------------------------------------------------------------------------------------------------
 
-variable "bucket_name" {
+variable "sns_topic_name" {
   type        = string
-  description = "AWS Storage Bucket Name"
+  description = "AWS Simple Notification Service Topic Name"
 }
 
-variable "kms_key_arn" {
+variable "kms_key_id" {
   type        = string
-  description = "KMS Encryption Key ARN"
+  description = "KMS Encryption Key ID"
 }
 
 ## ---------------------------------------------------------------------------------------------------------------------
@@ -18,14 +18,3 @@ variable "kms_key_arn" {
 ## These variables have defaults and may be overridden
 ## ---------------------------------------------------------------------------------------------------------------------
 
-variable "kms_retention_days" {
-  type        = number
-  description = "KMS Encryption Key Retention Window in Days"
-  default     = 1
-}
-
-variable "kms_encryption_algorithm" {
-  type        = string
-  description = "S3 KMS Encryption Key Algorithm"
-  default     = "aws:kms"
-}

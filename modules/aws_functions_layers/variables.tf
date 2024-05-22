@@ -1,3 +1,8 @@
+## ---------------------------------------------------------------------------------------------------------------------
+## MODULE PARAMETERS
+## These variables are expected to be passed in by the operator
+## ---------------------------------------------------------------------------------------------------------------------
+
 variable "bucket_id" {
   type        = string
   description = "AWS Storage Bucket ID for Lambda Source Code"
@@ -12,6 +17,11 @@ variable "package_version" {
   type        = string
   description = "Python Dependency Package Version"
 }
+
+## ---------------------------------------------------------------------------------------------------------------------
+## OPTIONAL PARAMETERS
+## These variables have defaults and may be overridden
+## ---------------------------------------------------------------------------------------------------------------------
 
 variable "no_dependencies" {
   type        = bool

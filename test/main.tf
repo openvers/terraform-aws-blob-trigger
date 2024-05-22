@@ -85,10 +85,25 @@ locals {
     "iam:ListPolicyVersions",
     "iam:DetachRolePolicy",
     "iam:DeletePolicy",
+    "iam:CreatePolicyVersion",
+    "iam:DeletePolicyVersion",
+    "kms:ScheduleKeyDeletion",
+    "kms:GenerateDataKey*",
+    "kms:Encrypt",
+    "kms:Decrypt",
+    "kms:Create*",
+    "kms:Describe*",
+    "kms:Enable*",
+    "kms:List*",
+    "kms:Put*",
+    "kms:Disable*",
+    "kms:Get*",
+    "kms:Delete*",
     "s3:*",
     "s3-object-lambda:*",
     "lambda:*",
     "logs:*",
+    "sns:*"
   ]
 }
 
@@ -119,7 +134,8 @@ module "aws_service_account" {
 
   service_account_name = var.service_account_name
   service_account_path = var.service_account_path
-  roles_list = local.service_account_roles_list
+  roles_list           = local.service_account_roles_list
+
 
   providers = {
     aws.accountgen = aws.accountgen
@@ -154,6 +170,64 @@ module "aws_identity_federation_roles" {
   depends_on = [module.aws_service_account]
 
   assume_role_policies = local.assume_role_policies
+  policy_roles_list = [
+    "iam:DeleteRole",
+    "iam:ListInstanceProfilesForRole",
+    "iam:ListAttachedRolePolicies",
+    "iam:ListRolePolicies",
+    "iam:GetRole",
+    "iam:CreateRole",
+    "iam:GetRolePolicy",
+    "iam:PutRolePolicy",
+    "iam:DeleteRolePolicy",
+    "iam:CreatePolicyVersion",
+    "iam:DeletePolicyVersion",
+    "s3:Get*",
+    "s3:Put*",
+    "s3:List*",
+    "kms:GenerateDataKey*",
+    "kms:Encrypt",
+    "kms:Decrypt",
+  ]
+
+  providers = {
+    aws.auth_session = aws.auth_session
+  }
+}
+
+## ---------------------------------------------------------------------------------------------------------------------
+## KMS KEY MODULE
+## 
+## Create an AWS KMS encryption key.
+## 
+## Parameters:
+## - `kms_key_id`: KMS key name.
+## ---------------------------------------------------------------------------------------------------------------------
+module "kms_key" {
+  source     = "../modules/aws_kms_key"
+  depends_on = [module.aws_service_account]
+
+  service_account_arn = module.aws_service_account.service_account_arn
+  assume_role_arn     = module.aws_identity_federation_roles.assume_role_arn
+
+  providers = {
+    aws.auth_session = aws.auth_session
+  }
+}
+
+## ---------------------------------------------------------------------------------------------------------------------
+## SNS TOPIC MODULE
+## 
+## Create an AWS SNS Topic.
+## 
+## Parameters:
+## - `kms_key_id`: KMS key name.
+## ---------------------------------------------------------------------------------------------------------------------
+module "sns_topic" {
+  source = "../modules/aws_sns_topic"
+
+  sns_topic_name = "example-sns-topic"
+  kms_key_id     = module.kms_key.kms_key_id
 
   providers = {
     aws.auth_session = aws.auth_session
@@ -173,6 +247,7 @@ module "trigger_bucket" {
   source = "../modules/s3_bucket"
 
   bucket_name = "example-blob-trigger-bucket"
+  kms_key_arn = module.kms_key.kms_key_arn
 
   providers = {
     aws.auth_session = aws.auth_session
@@ -192,6 +267,7 @@ module "results_bucket" {
   source = "../modules/s3_bucket"
 
   bucket_name = "example-blob-results-bucket"
+  kms_key_arn = module.kms_key.kms_key_arn
 
   providers = {
     aws.auth_session = aws.auth_session
@@ -209,20 +285,26 @@ module "results_bucket" {
 ## - `trigger_bucket_name`: S3 Bucket name to configure with blob trigger.
 ## - `trigger_bucket_arn`: S3 Bucket ARN to configure with blob trigger.
 ## - `results_bucket_arn`: S3 Bucket ARN for the blob trigger results data.
+## - `kms_key_arn`: KMS encryption key ARN.
+## - `sns_topic_arn`: SNS Topic ARN for Dead Letter Queue. 
 ## - `function_contents`: List of function source code to archive and artifact for Lambda Functions.
 ## ---------------------------------------------------------------------------------------------------------------------
 module "aws_lambda_function" {
   source = "../"
-  depends_on = [ 
+  depends_on = [
     module.trigger_bucket,
     module.results_bucket,
-    module.aws_identity_federation_roles 
+    module.aws_identity_federation_roles
   ]
 
   function_name       = "example-aws-blob-trigger"
+  function_handler    = "run"
   trigger_bucket_name = module.trigger_bucket.bucket_id
-  trigger_bucket_arn  = module.trigger_bucket.bucket_arn
-  results_bucket_arn  = module.results_bucket.bucket_arn
+  results_bucket_name = module.results_bucket.bucket_id
+  sns_topic_arn       = module.sns_topic.sns_topic_arn
+  kms_key_id          = module.kms_key.kms_key_id
+  kms_key_arn         = module.kms_key.kms_key_arn
+
   function_contents = [
     {
       filename = "main.py",
@@ -243,8 +325,13 @@ module "aws_lambda_function" {
     {
       package_name    = "fsspec",
       package_version = "2022.11.0",
-      no_dependencies = true
+      no_dependencies = false
     },
+    {
+      package_name    = "typing-extensions",
+      package_version = "4.10.0",
+      no_dependencies = true
+    }
   ]
 
   function_environment_variables = {

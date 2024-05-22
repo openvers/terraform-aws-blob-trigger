@@ -42,6 +42,11 @@ act -j terraform-dispatch-apply \
     --secret-file ~/creds/aws.secrets \
     --remote-name $(git remote show)
 
+act -j terraform-dispatch-test \
+    -e .github/local.json \
+    --secret-file ~/creds/aws.secrets \
+    --remote-name $(git remote show)
+
 act -j terraform-dispatch-destroy \
     -e .github/local.json \
     --secret-file ~/creds/aws.secrets \

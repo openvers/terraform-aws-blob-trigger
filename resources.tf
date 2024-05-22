@@ -45,7 +45,7 @@ locals {
     "logs:PutLogEvents"
   ]
 
-  layer_arns = [for d in module.function_layers: d.layer_arn]
+  layer_arns = [for d in module.function_layers : d.layer_arn]
 }
 
 ## ---------------------------------------------------------------------------------------------------------------------
@@ -80,12 +80,15 @@ data "archive_file" "this" {
 ## S3 Bucket to store AWS Lambda Function source code.
 ## 
 ## Parameters:
-## - `bucket_name`: S3 bucket name
+## - `bucket_name`: S3 bucket name.
+## - `kms_key_arn`: KMS encryption key ARN.
+## - `sns_topic_arn`: AWS SNS Topic ARN.
 ## ---------------------------------------------------------------------------------------------------------------------
 module "function_bucket" {
   source = "./modules/s3_bucket"
 
   bucket_name = var.function_bucket_name
+  kms_key_arn = var.kms_key_arn
 
   providers = {
     aws.auth_session = aws.auth_session
@@ -122,12 +125,12 @@ resource "aws_s3_object" "this" {
 ## - `function_runtime`: AWS Lamdba Function runtime environment.
 ## ---------------------------------------------------------------------------------------------------------------------
 module "function_layers" {
-  source   = "./modules/aws_functions_layers"
+  source = "./modules/aws_functions_layers"
   for_each = tomap({
     for d in var.function_dependencies :
     "${d.package_name}:${d.package_version}" => d
   })
-  
+
   bucket_id        = module.function_bucket.bucket_id
   package_name     = each.value.package_name
   package_version  = each.value.package_version
@@ -199,7 +202,7 @@ resource "aws_cloudwatch_log_group" "this" {
 ## ---------------------------------------------------------------------------------------------------------------------
 ## AWS IAM POLICY DOCUMENT DATA SOURCE
 ## 
-## Define a policy document to grant resource access to S3 buckets and Cloudwatch logging.
+## Define a policy document to grant resource access to S3 buckets, Cloudwatch logging, and SNS Publishing.
 ## ---------------------------------------------------------------------------------------------------------------------
 data "aws_iam_policy_document" "logs" {
   provider = aws.auth_session
@@ -207,24 +210,55 @@ data "aws_iam_policy_document" "logs" {
   statement {
     sid     = "PolicyDoc${replace("${var.function_name}Buckets${local.suffix}", "-", "")}"
     effect  = "Allow"
-    actions = local.policy_bucket_actions
+    actions = [
+    "s3:GetObject",
+    "s3:PutObject"
+  ]
 
     resources = [
-      var.trigger_bucket_arn,
-      "${var.trigger_bucket_arn}/*",
-      var.results_bucket_arn,
-      "${var.results_bucket_arn}/*",
+      "arn:aws:s3:::${var.trigger_bucket_name}",
+      "arn:aws:s3:::${var.trigger_bucket_name}/*",
+      "arn:aws:s3:::${var.results_bucket_name}",
+      "arn:aws:s3:::${var.results_bucket_name}/*",
     ]
   }
 
   statement {
     sid     = "PolicyDoc${replace("${var.function_name}Logs${local.suffix}", "-", "")}"
     effect  = "Allow"
-    actions = local.policy_cloudwatch_actions
+    actions = [
+    "logs:CreateLogGroup",
+    "logs:CreateLogStream",
+    "logs:PutLogEvents",
+  ]
 
     resources = [
       aws_cloudwatch_log_group.this.arn,
       "${aws_cloudwatch_log_group.this.arn}:*"
+    ]
+  }
+
+  statement {
+    sid     = "PolicyDoc${replace("${var.function_name}SNS${local.suffix}", "-", "")}"
+    effect  = "Allow"
+    actions = ["sns:*"]
+
+    resources = [
+      var.sns_topic_arn,
+    ]
+  }
+
+  statement {
+    sid    = "PolicyDoc${replace("${var.function_name}KMS${local.suffix}", "-", "")}"
+    effect = "Allow"
+    actions = [
+      "kms:GenerateDataKey*",
+      "kms:Encrypt",
+      "kms:Decrypt",
+    ]
+
+    resources = [
+      var.kms_key_arn,
     ]
   }
 }
@@ -277,6 +311,7 @@ resource "aws_lambda_function" "this" {
   memory_size   = var.function_memory
   timeout       = var.function_timeout
   layers        = local.layer_arns
+  kms_key_arn   = var.kms_key_arn
 
   logging_config {
     log_format = "Text"
@@ -285,6 +320,14 @@ resource "aws_lambda_function" "this" {
 
   environment {
     variables = var.function_environment_variables
+  }
+
+  tracing_config {
+    mode = "Active"
+  }
+
+  dead_letter_config {
+    target_arn = var.sns_topic_arn
   }
 
   depends_on = [
@@ -336,5 +379,5 @@ resource "aws_lambda_permission" "this" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.this.function_name
   principal     = "s3.amazonaws.com"
-  source_arn    = var.trigger_bucket_arn
+  source_arn    = "arn:aws:s3:::${var.trigger_bucket_name}"
 }

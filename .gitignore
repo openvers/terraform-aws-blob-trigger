@@ -5,3 +5,4 @@ test/unit_test/__pycache__/*
 \.pytest_cache
 test/source/fsspec/*
 test/source/s3fs/*
+test/source/typing-extensions/*

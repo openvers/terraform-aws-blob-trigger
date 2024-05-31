@@ -60,7 +60,7 @@ data "archive_file" "this" {
 ## ---------------------------------------------------------------------------------------------------------------------
 resource "aws_s3_object" "this" {
   provider   = aws.auth_session
-  depends_on = [ data.archive_file.this ]
+  depends_on = [data.archive_file.this]
 
   bucket = var.bucket_id
   key    = "layer_${var.package_name}.zip"

@@ -71,10 +71,10 @@ jobs:
       run: |
         echo "::add-mask::$(terraform output -raw service_account_client_id)"
         echo "::add-mask::$(terraform output -raw service_account_client_secret)"
-        echo "::add-mask::$(terraform output -raw assume_role_arn)"
+        echo "::add-mask::$(terraform output -raw assume_role_arn | base64 -w0 | base64 -w0)"
         echo "INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
         OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
-        ASSUME_ROLE=$(terraform output -raw assume_role_arn)
+        ASSUME_ROLE=$(terraform output -raw assume_role_arn | base64 -w0 | base64 -w0)
         CLIENT_ID=${{ !!inputs.ACT_MODE && '$(terraform output -raw service_account_client_id)' || 'null' }}
         CLIENT_SECRET=${{ !!inputs.ACT_MODE && '$(terraform output -raw service_account_client_secret)' || 'null'}}" >> $GITHUB_OUTPUT
   
@@ -98,7 +98,7 @@ jobs:
             core.setOutput('TOKEN', token.trim())
             core.setOutput('IDTOKENURL', runtimeUrl.trim())  
 
-            const idtoken = await core.getIDToken(‘sts.amazonaws.com’)
+            const idtoken = await core.getIDToken('sts.amazonaws.com')
             core.setOutput('IDTOKEN', idtoken)
       
       - id: jwt_token
@@ -140,8 +140,10 @@ jobs:
       - name: Outputs Decode
         id: decode
         run: |
-          echo "::add-mask::$(echo ${{ needs.oidc_output.outputs.OIDC_TOKEN }} | base64 -di | base64 -di )"
-          echo "OIDC_TOKEN=$(echo ${{ needs.oidc_output.outputs.OIDC_TOKEN }} | base64 -di | base64 -di )" >> $GITHUB_ENV
+          echo "::add-mask::$(echo ${{ needs.oidc_output.outputs.OIDC_TOKEN }} | base64 -di | base64 -di)"
+          echo "::add-mask::$(echo ${{ needs.terraform-output.outputs.ASSUME_ROLE }} | base64 -di | base64 -di)"
+          echo "OIDC_TOKEN=$(echo ${{ needs.oidc_output.outputs.OIDC_TOKEN }} | base64 -di | base64 -di)
+          ASSUME_ROLE=$(echo ${{ needs.terraform-output.outputs.ASSUME_ROLE }} | base64 -di | base64 -di)" >> $GITHUB_ENV
                   
       # Install pip and pytest
       - name: Install dependencies

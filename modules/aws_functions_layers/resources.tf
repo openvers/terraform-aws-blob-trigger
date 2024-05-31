@@ -59,7 +59,8 @@ data "archive_file" "this" {
 ## - `source`: Filepath to depenency package artifact.
 ## ---------------------------------------------------------------------------------------------------------------------
 resource "aws_s3_object" "this" {
-  provider = aws.auth_session
+  provider   = aws.auth_session
+  depends_on = [ data.archive_file.this ]
 
   bucket = var.bucket_id
   key    = "layer_${var.package_name}.zip"

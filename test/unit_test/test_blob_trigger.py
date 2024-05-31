@@ -71,20 +71,23 @@ def test_aws_oidc_blob_trigger(payload={'test_value': str(uuid.uuid4())}):
     assert not OIDC_TOKEN is None
 
     client = boto3.client('sts')
-    creds = client.assume_role_with_web_identity(
-        RoleArn=ASSUME_ROLE,
-        RoleSessionName='github-unit-test-oidc-session',
-        WebIdentityToken=OIDC_TOKEN
-    )   
+    try:
+        creds = client.assume_role_with_web_identity(
+            RoleArn=ASSUME_ROLE,
+            RoleSessionName='github-unit-test-oidc-session',
+            WebIdentityToken=OIDC_TOKEN
+        )
 
-    fs = s3fs.S3FileSystem(
-        key=creds['AccessKeyId'],
-        secret=creds['SecretAccessKey'],
-        token=creds['SessionToken']
-    )
-    _write_blob(fs, payload)
+        fs = s3fs.S3FileSystem(
+            key=creds['AccessKeyId'],
+            secret=creds['SecretAccessKey'],
+            token=creds['SessionToken']
+        )
+        _write_blob(fs, payload)
 
-    time.sleep(10)
-    rs = _read_blob(fs)
+        time.sleep(10)
+        rs = _read_blob(fs)
 
-    assert rs['test_value'] == payload['test_value']
+        assert rs['test_value'] == payload['test_value']
+    except KeyError as exc:
+        raise Exception('OIDC Token Request error', creds, exc)

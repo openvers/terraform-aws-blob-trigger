@@ -5,9 +5,9 @@ trigger mechanism responsible for initiating actions upon the creation or
 modification of objects within Amazon Simple Storage Service (S3) buckets. This 
 entails simulating the triggering event, such as the addition of a new 
 blob to a specified bucket, and validating that the associated actions, 
-like invoking cloud functions or workflows, are executed as expected. Through 
+like invoking lambda functions or workflows, are executed as expected. Through 
 meticulous testing, developers ensure the reliability and accuracy of their 
-GCP Blob Trigger implementation, fostering robustness and confidence in their 
+AWS Blob Trigger implementation, fostering robustness and confidence in their 
 cloud-based applications.
 
 Local Testing Steps:

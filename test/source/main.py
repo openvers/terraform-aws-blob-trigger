@@ -2,14 +2,14 @@
 
 An Amazon Web Services (AWS) Lambda Function with a Blob Storage Trigger is a 
 serverless function that automatically executes in response to changes in a 
-specified Cloud Storage bucket. When a new blob (file) is created, modified, 
-or deleted in the specified bucket, the Cloud Function is triggered, allowing 
+specified S3 bucket. When a new blob (file) is created, modified, 
+or deleted in the specified bucket, the Lambda Function is triggered, allowing 
 you to perform custom logic or processing on the blob data. This trigger mechanism 
 enables event-driven architecture and allows you to build scalable and event-based 
-solutions on GCP.
+solutions on AWS.
 
-This example in particular will take JSON data from the Trigger GCS Bucket,
-and store the exact same content with same file name in the Results GCS Bucket
+This example in particular will take JSON data from the Trigger S3 Bucket,
+and store the exact same content with same file name in the Results S3 Bucket
 referred to under ENV Variable OUTPUT_BUCKET.
 
 """

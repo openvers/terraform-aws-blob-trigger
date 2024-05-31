@@ -348,7 +348,8 @@ resource "aws_lambda_function" "this" {
 ## - `events`: List of AWS S3 events.
 ## ---------------------------------------------------------------------------------------------------------------------
 resource "aws_s3_bucket_notification" "this" {
-  provider = aws.auth_session
+  provider   = aws.auth_session
+  depends_on = [aws_lambda_permission.this]
 
   bucket = var.trigger_bucket_name
 

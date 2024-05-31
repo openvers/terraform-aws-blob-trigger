@@ -81,14 +81,14 @@ jobs:
   oidc_output:
     runs-on: ubuntu-latest
     name: Github OIDC JWT Token Request
-    
+    if: ${{ !inputs.ACT_MODE }}
+
     outputs:
       OIDC_TOKEN: "${{ steps.jwt_token.outputs.OIDC_TOKEN }}"
     
     steps:
       - uses: actions/github-script@v6
         id: script
-        if: ${{ !inputs.ACT_MODE }}
         timeout-minutes: 10
         with:
           debug: true
@@ -102,7 +102,6 @@ jobs:
             core.setOutput('IDTOKEN', idtoken)
       
       - id: jwt_token
-        if: ${{ !inputs.ACT_MODE }}
         run: |
           jwtd() {
               if [[ -x $(command -v jq) ]]; then
@@ -118,6 +117,7 @@ jobs:
     name: Terraform Test
     needs: [ terraform-output, oidc_output ]
     runs-on: ubuntu-latest
+    if: ${{ always() }}
     env:
         INPUT_BUCKET: ${{ needs.terraform-output.outputs.INPUT_BUCKET }}
         OUTPUT_BUCKET: ${{ needs.terraform-output.outputs.OUTPUT_BUCKET }}

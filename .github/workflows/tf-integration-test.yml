@@ -80,14 +80,11 @@ jobs:
     needs: [ terraform-integration-apply ]
     uses: ./.github/workflows/reusable-test.yml
     secrets:
-      AWS_CLIENT_ID: ${{ secrets.AWS_CLIENT_ID }}
-      AWS_CLIENT_SECRET: ${{ secrets.AWS_CLIENT_SECRET }}
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
       TF_API_TOKEN: ${{ secrets.TF_API_TOKEN }}
     with:
       ACT_MODE: ${{ !!github.event.act }}
-      markers: "github"
+      markers: ${{ !!github.event.act && 'github and env' || 'github and oidc'}}
   
   terraform-integration-destroy:
     if: always()

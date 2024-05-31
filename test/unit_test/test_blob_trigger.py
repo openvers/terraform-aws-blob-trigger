@@ -26,6 +26,7 @@ terraform destroy -auto-approve
 
 import logging
 import pytest
+import boto3
 import s3fs
 import json
 import uuid
@@ -34,9 +35,10 @@ import os
 
 # Environment Variables
 INPUT_BUCKET=os.getenv('INPUT_BUCKET')
-assert not INPUT_BUCKET is None
 OUTPUT_BUCKET=os.getenv('OUTPUT_BUCKET')
+assert not INPUT_BUCKET is None
 assert not OUTPUT_BUCKET is None
+
 
 def _write_blob(fs, payload):
     with fs.open(f's3://{INPUT_BUCKET}/test.json', 'w') as f:
@@ -47,10 +49,39 @@ def _read_blob(fs):
         return json.loads(f.read())
 
 @pytest.mark.github
-def test_aws_blob_trigger(payload={'test_value': str(uuid.uuid4())}):
+@pytest.mark.env
+def test_aws_env_blob_trigger(payload={'test_value': str(uuid.uuid4())}):
     logging.info('Pytest | Test AWS Blob Trigger')
 
     fs = s3fs.S3FileSystem()
+    _write_blob(fs, payload)
+
+    time.sleep(10)
+    rs = _read_blob(fs)
+
+    assert rs['test_value'] == payload['test_value']
+
+@pytest.mark.github
+@pytest.mark.oidc
+def test_aws_oidc_blob_trigger(payload={'test_value': str(uuid.uuid4())}):
+    logging.info('Pytest | Test AWS Blob Trigger')
+    ASSUME_ROLE=os.getenv('ASSUME_ROLE')
+    OIDC_TOKEN=os.getenv('OIDC_TOKEN')
+    assert not ASSUME_ROLE is None
+    assert not OIDC_TOKEN is None
+
+    client = boto3.client('sts')
+    creds = client.assume_role_with_web_identity(
+        RoleArn=ASSUME_ROLE,
+        RoleSessionName='github-unit-test-oidc-session',
+        WebIdentityToken=OIDC_TOKEN
+    )   
+
+    fs = s3fs.S3FileSystem(
+        key=creds['AccessKeyId'],
+        secret=creds['SecretAccessKey'],
+        token=creds['SessionToken']
+    )
     _write_blob(fs, payload)
 
     time.sleep(10)

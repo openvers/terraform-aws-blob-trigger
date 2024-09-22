@@ -10,6 +10,9 @@ meticulous testing, developers ensure the reliability and accuracy of their
 AWS Blob Trigger implementation, fostering robustness and confidence in their 
 cloud-based applications.
 
+References:
+ - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sts/client/assume_role_with_web_identity.html
+
 Local Testing Steps:
 ```
 terraform init && \

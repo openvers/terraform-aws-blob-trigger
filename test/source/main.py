@@ -10,7 +10,7 @@ solutions on AWS.
 
 This example in particular will take JSON data from the Trigger S3 Bucket,
 and store the exact same content with same file name in the Results S3 Bucket
-referred to under ENV Variable OUTPUT_BUCKET.
+referred to under ENV Variable TARGET_BUCKET.
 
 """
 
@@ -22,7 +22,7 @@ import sys
 import os
 
 # Environment Variables
-OUTPUT_BUCKET=os.getenv('OUTPUT_BUCKET')
+TARGET_BUCKET=os.getenv('TARGET_BUCKET')
 
 
 # Setup
@@ -64,5 +64,5 @@ def run(event, context):
 
     fs = s3fs.S3FileSystem()
     rs = load_json(fs, bucket, name)
-    with fs.open(os.path.join(f's3://{OUTPUT_BUCKET}', name), 'w') as f:
+    with fs.open(os.path.join(f's3://{TARGET_BUCKET}', name), 'w') as f:
         f.write(json.dumps(rs))

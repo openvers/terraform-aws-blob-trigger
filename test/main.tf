@@ -16,6 +16,23 @@ terraform {
   }
 }
 
+## ---------------------------------------------------------------------------------------------------------------------
+## RANDOM STRING RESOURCE
+##
+## This resource generates a random string of a specified length.
+##
+## Parameters:
+## - `special`: Whether to include special characters in the random string.
+## - `upper`: Whether to include uppercase letters in the random string.
+## - `length`: The length of the random string.
+## ---------------------------------------------------------------------------------------------------------------------
+resource "random_string" "this" {
+  special = false
+  upper   = false
+  numeric = false
+  length  = 4
+}
+
 locals {
   assume_role_policies = [
     {
@@ -110,6 +127,8 @@ locals {
     "logs:*",
     "sns:*"
   ]
+
+  suffix = "test-${random_string.this.id}"
 }
 
 ## ---------------------------------------------------------------------------------------------------------------------
@@ -170,7 +189,7 @@ provider "aws" {
 ## - `aws.accountgen`: Alias for the AWS provider for generating service accounts.
 ##---------------------------------------------------------------------------------------------------------------------
 module "aws_identity_federation_roles" {
-  source     = "github.com/sim-parables/terraform-aws-service-account.git?ref=a18e50b961655a345a7fd2d8e573fe84484c7235//modules/identity_federation_roles"
+  source     = "github.com/sim-parables/terraform-aws-service-account.git//modules/identity_federation_roles?ref=a18e50b961655a345a7fd2d8e573fe84484c7235"
   depends_on = [module.aws_service_account]
 
   assume_role_policies  = local.assume_role_policies
@@ -201,58 +220,19 @@ module "aws_identity_federation_roles" {
 }
 
 ## ---------------------------------------------------------------------------------------------------------------------
-## KMS KEY MODULE
-## 
-## Create an AWS KMS encryption key.
-## 
-## Parameters:
-## - `kms_key_id`: KMS key name.
-## ---------------------------------------------------------------------------------------------------------------------
-module "kms_key" {
-  source     = "../modules/aws_kms_key"
-  depends_on = [module.aws_service_account]
-
-  service_account_arn = module.aws_service_account.service_account_arn
-  assume_role_arn     = module.aws_identity_federation_roles.assume_role_arn
-
-  providers = {
-    aws.auth_session = aws.auth_session
-  }
-}
-
-## ---------------------------------------------------------------------------------------------------------------------
 ## SNS TOPIC MODULE
 ## 
 ## Create an AWS SNS Topic.
 ## 
 ## Parameters:
+## - `sns_topic_name`: Name of the SNS Topic.
 ## - `kms_key_id`: KMS key name.
 ## ---------------------------------------------------------------------------------------------------------------------
 module "sns_topic" {
-  source = "../modules/aws_sns_topic"
+  source = "github.com/sim-parables/terraform-aws-data-ingestion.git//modules/aws_sns_topic?ref=bfb2cf155731bad5873bde3531762b1b0f7e4154"
 
-  sns_topic_name = "example-sns-topic"
-  kms_key_id     = module.kms_key.kms_key_id
-
-  providers = {
-    aws.auth_session = aws.auth_session
-  }
-}
-
-
-## ---------------------------------------------------------------------------------------------------------------------
-## TRIGGER BUCKET MODULE
-## 
-## S3 Bucket to store data with a blob trigger.
-## 
-## Parameters:
-## - `bucket_name`: S3 bucket name
-## ---------------------------------------------------------------------------------------------------------------------
-module "trigger_bucket" {
-  source = "../modules/s3_bucket"
-
-  bucket_name = "example-blob-trigger-bucket"
-  kms_key_arn = module.kms_key.kms_key_arn
+  sns_topic_name = "${local.suffix}-sns-topic"
+  kms_key_id     = module.data_lake.kms_key_id
 
   providers = {
     aws.auth_session = aws.auth_session
@@ -261,18 +241,27 @@ module "trigger_bucket" {
 
 
 ## ---------------------------------------------------------------------------------------------------------------------
-## RESULTS BUCKET MODULE
-## 
-## S3 Bucket to store triggered ETL data.
-## 
+## DATA LAKE MODULE
+##
+## Provisions a complete AWS Data Lake environment, including S3 buckets for bronze, silver, and gold medallion data layers,
+## IAM roles and policies, KMS encryption, Lambda function integration, and supporting resources.
+##
 ## Parameters:
-## - `bucket_name`: S3 bucket name
+## - `bronze_bucket_name`: Name of the S3 bucket for raw/bronze data.
+## - `silver_bucket_name`: Name of the S3 bucket for processed/silver data.
+## - `gold_bucket_name`: Name of the S3 bucket for curated/gold data.
+##
+## Notes:
+## - This module is designed for end-to-end data lake testing and development.
+## - Additional configuration may be required for Lambda, KMS, and IAM integration depending on your use case.
 ## ---------------------------------------------------------------------------------------------------------------------
-module "results_bucket" {
-  source = "../modules/s3_bucket"
+module "data_lake" {
+  source     = "github.com/sim-parables/terraform-aws-data-lake.git?ref=af8c8eba6f7dd2bd0fb81950117ef00be5a53bf4"
+  depends_on = [module.aws_service_account]
 
-  bucket_name = "example-blob-results-bucket"
-  kms_key_arn = module.kms_key.kms_key_arn
+  bronze_bucket_name = "${local.suffix}-bronze"
+  silver_bucket_name = "${local.suffix}-silver"
+  gold_bucket_name   = "${local.suffix}-gold"
 
   providers = {
     aws.auth_session = aws.auth_session
@@ -297,18 +286,20 @@ module "results_bucket" {
 module "aws_lambda_function" {
   source = "../"
   depends_on = [
-    module.trigger_bucket,
-    module.results_bucket,
+    module.data_lake,
     module.aws_identity_federation_roles
   ]
 
-  function_name       = "example-aws-blob-trigger"
-  function_handler    = "run"
-  trigger_bucket_name = module.trigger_bucket.bucket_id
-  results_bucket_name = module.results_bucket.bucket_id
-  sns_topic_arn       = module.sns_topic.sns_topic_arn
-  kms_key_id          = module.kms_key.kms_key_id
-  kms_key_arn         = module.kms_key.kms_key_arn
+  function_name    = "example-aws-blob-trigger"
+  function_handler = "run"
+  source_bucket_id = module.data_lake.bronze_bucket_id
+  sns_topic_arn    = module.sns_topic.sns_topic_arn
+  kms_key_id       = module.data_lake.kms_key_id
+  kms_key_arn      = module.data_lake.kms_key_arn
+  bucket_ids = [
+    module.data_lake.bronze_bucket_id,
+    module.data_lake.silver_bucket_id
+  ]
 
   function_contents = [
     {
@@ -340,7 +331,7 @@ module "aws_lambda_function" {
   ]
 
   function_environment_variables = {
-    OUTPUT_BUCKET = module.results_bucket.bucket_id
+    TARGET_BUCKET = module.data_lake.silver_bucket_id
   }
 
   providers = {

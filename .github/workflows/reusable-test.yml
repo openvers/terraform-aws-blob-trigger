@@ -45,8 +45,8 @@ jobs:
           working-directory: ${{ inputs.working_directory }}
     
     outputs:
-      INPUT_BUCKET: "${{ steps.tf-raw.outputs.INPUT_BUCKET }}"
-      OUTPUT_BUCKET: "${{ steps.tf-raw.outputs.OUTPUT_BUCKET }}"
+      SOURCE_BUCKET: "${{ steps.tf-raw.outputs.SOURCE_BUCKET }}"
+      TARGET_BUCKET: "${{ steps.tf-raw.outputs.TARGET_BUCKET }}"
       CLIENT_ID: "${{ steps.tf-raw.outputs.CLIENT_ID}}"
       CLIENT_SECRET: "${{ steps.tf-raw.outputs.CLIENT_SECRET}}"
       ASSUME_ROLE_ARN: "${{ steps.tf-raw.outputs.ASSUME_ROLE_ARN}}"
@@ -71,8 +71,8 @@ jobs:
       run: |
         echo "::add-mask::$(terraform output -raw service_account_client_id)"
         echo "::add-mask::$(terraform output -raw service_account_client_secret)"
-        echo "INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
-        OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
+        echo "SOURCE_BUCKET=$(terraform output -raw bronze_bucket_id)
+        TARGET_BUCKET=$(terraform output -raw silver_bucket_id)
         ASSUME_ROLE_ARN=$(terraform output -raw assume_role_arn | base64 -w0 | base64 -w0)
         CLIENT_ID=${{ !!inputs.ACT_MODE && '$(terraform output -raw service_account_client_id)' || 'null' }}
         CLIENT_SECRET=${{ !!inputs.ACT_MODE && '$(terraform output -raw service_account_client_secret)' || 'null'}}" >> $GITHUB_OUTPUT
@@ -83,8 +83,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() }}
     env:
-        INPUT_BUCKET: ${{ needs.terraform-output.outputs.INPUT_BUCKET }}
-        OUTPUT_BUCKET: ${{ needs.terraform-output.outputs.OUTPUT_BUCKET }}
+        SOURCE_BUCKET: ${{ needs.terraform-output.outputs.SOURCE_BUCKET }}
+        TARGET_BUCKET: ${{ needs.terraform-output.outputs.TARGET_BUCKET }}
         AWS_ACCESS_KEY_ID: ${{ needs.terraform-output.outputs.CLIENT_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ needs.terraform-output.outputs.CLIENT_SECRET }}
     

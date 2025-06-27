@@ -15,15 +15,15 @@ References:
 
 Local Testing Steps:
 ```
-terraform init && \
-terraform apply -auto-approve
+terraform -chdir=./test init && \
+terraform -chdir=./test apply -auto-approve
 
-export INPUT_BUCKET=$(terraform output -raw trigger_bucket_name)
-export OUTPUT_BUCKET=$(terraform output -raw results_bucket_name)
+export SOURCE_BUCKET=$(terraform -chdir=./test output -raw bronze_bucket_id)
+export TARGET_BUCKET=$(terraform -chdir=./test output -raw silver_bucket_id)
 
-python3 -m pytest -m github
+python3 -m pytest -m 'local and env' test/unit_test/test_blob_trigger.py
 
-terraform destroy -auto-approve
+terraform -chdir=./test destroy -auto-approve
 ```
 """
 
@@ -37,21 +37,21 @@ import time
 import os
 
 # Environment Variables
-INPUT_BUCKET=os.getenv('INPUT_BUCKET')
-OUTPUT_BUCKET=os.getenv('OUTPUT_BUCKET')
-assert not INPUT_BUCKET is None
-assert not OUTPUT_BUCKET is None
+SOURCE_BUCKET=os.getenv('SOURCE_BUCKET')
+TARGET_BUCKET=os.getenv('TARGET_BUCKET')
+assert not SOURCE_BUCKET is None
+assert not TARGET_BUCKET is None
 
 
 def _write_blob(fs, payload):
-    with fs.open(f's3://{INPUT_BUCKET}/test.json', 'w') as f:
+    with fs.open(f's3://{SOURCE_BUCKET}/test.json', 'w') as f:
         f.write(json.dumps(payload))
 
 def _read_blob(fs):
-    with fs.open(f's3://{OUTPUT_BUCKET}/test.json', 'rb') as f:
+    with fs.open(f's3://{TARGET_BUCKET}/test.json', 'rb') as f:
         return json.loads(f.read())
 
-@pytest.mark.github
+@pytest.mark.local
 @pytest.mark.env
 def test_aws_env_blob_trigger(payload={'test_value': str(uuid.uuid4())}):
     logging.info('Pytest | Test AWS Blob Trigger')

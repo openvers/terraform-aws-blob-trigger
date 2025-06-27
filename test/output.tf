@@ -1,11 +1,11 @@
-output "trigger_bucket_name" {
-  description = "S3 Bucket Name for Trigger Data"
-  value       = module.trigger_bucket.bucket_id
+output "bronze_bucket_id" {
+  description = "S3 Bucket Name for Data Lake Bronze Layer Data"
+  value       = module.data_lake.bronze_bucket_id
 }
 
-output "results_bucket_name" {
-  description = "S3 Bucket Name for Results Data"
-  value       = module.results_bucket.bucket_id
+output "silver_bucket_id" {
+  description = "S3 Bucket Name for Data Lake Silver Layer Data"
+  value       = module.data_lake.silver_bucket_id
 }
 
 output "service_account_client_id" {
